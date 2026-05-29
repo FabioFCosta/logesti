@@ -15,7 +15,7 @@ SCOPES = [
     'https://www.googleapis.com/auth/drive.readonly'
 ]
 
-FILE_ID = os.getenv("FILE_ID")
+FILE_ID = os.getenv("FILE_ID") or st.secrets.get("FILE_ID")
 def authenticate():
     creds = None
 

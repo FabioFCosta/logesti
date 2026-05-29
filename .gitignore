@@ -1,1 +1,4 @@
 .env
+/.streamlit
+credentials.json
+token.json
