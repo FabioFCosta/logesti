@@ -92,6 +92,13 @@ def authenticate():
         with open("token.json", "w") as token:
             token.write(creds.to_json())
 
+    if creds is None:
+        raise RuntimeError(
+            "No Google credentials found. "
+            "Add a service account as Streamlit secret 'google_service_account', "
+            "or add user OAuth credentials as 'google_sheets_credentials'."
+        )
+
     return creds
 
 def get_sheets_service():
