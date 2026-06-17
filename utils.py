@@ -1,5 +1,8 @@
+import json
 import os
+from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from google.oauth2.service_account import Credentials as ServiceAccountCredentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 import pandas as pd
@@ -16,17 +19,61 @@ SCOPES = [
 ]
 
 FILE_ID = os.getenv("FILE_ID") or st.secrets.get("FILE_ID")
+print(f"Using FILE_ID: {FILE_ID}")
 def authenticate():
     creds = None
+
+    # Try Streamlit Secrets (service account)
+    try:
+        if "google_service_account" in st.secrets:
+            service_account_info = st.secrets["google_service_account"]
+            if isinstance(service_account_info, str):
+                service_account_info = json.loads(service_account_info)
+            creds = ServiceAccountCredentials.from_service_account_info(
+                service_account_info,
+                scopes=SCOPES,
+            )
+            return creds
+    except Exception:
+        pass
+
+    # Try environment service account info
+    try:
+        sa_info = os.getenv("GOOGLE_SERVICE_ACCOUNT_INFO")
+        if sa_info:
+            service_account_info = json.loads(sa_info)
+            creds = ServiceAccountCredentials.from_service_account_info(
+                service_account_info,
+                scopes=SCOPES,
+            )
+            return creds
+    except Exception:
+        pass
+
+    # Try environment service account file path
+    try:
+        sa_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS") or os.getenv("SERVICE_ACCOUNT_FILE")
+        if sa_file and os.path.exists(sa_file):
+            creds = ServiceAccountCredentials.from_service_account_file(
+                sa_file,
+                scopes=SCOPES,
+            )
+            return creds
+    except Exception:
+        pass
 
     # Try Streamlit Secrets (for Cloud deployment)
     try:
         if "google_sheets_credentials" in st.secrets:
-            creds_dict = st.secrets["google_sheets_credentials"]
+            creds_dict = dict(st.secrets["google_sheets_credentials"])
+            creds_dict.setdefault("token_uri", "https://oauth2.googleapis.com/token")
             creds = Credentials.from_authorized_user_info(creds_dict, SCOPES)
             if creds and creds.valid:
                 return creds
-    except:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+                return creds
+    except Exception:
         pass
 
     # Try local token.json (for local development)
