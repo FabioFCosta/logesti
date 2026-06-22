@@ -1,14 +1,9 @@
 import streamlit as st
 import utils
-import auth
-
-
-
-st.set_page_config(page_title="Logesti - Configurações Gerais", page_icon=":gear:", layout="wide")
-
-auth.require_login()
 
 FILE_ID = utils.FILE_ID
+
+st.set_page_config(page_title="Logesti - Configurações Gerais", page_icon=":gear:", layout="wide")
 st.title("⚙️ Configurações Gerais")
 
 rates = utils.load_km_rates(FILE_ID)

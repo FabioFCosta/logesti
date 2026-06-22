@@ -2,15 +2,12 @@ import streamlit as st
 import pandas as pd
 import uuid
 import time
-import utils
-import auth
 
+import utils
+from googleapiclient.discovery import build
 
 st.set_page_config(page_title="Logesti - Clientes",
                    page_icon=":busts_in_silhouette:", layout="wide")
-
-auth.require_login()
-
 st.title("Logesti")
 
 FILE_ID = utils.FILE_ID

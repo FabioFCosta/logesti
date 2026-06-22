@@ -4,14 +4,10 @@ import uuid
 import time
 import utils
 from googleapiclient.discovery import build
-import auth
-
 
 
 st.set_page_config(page_title="Logesti - Orçamentos",
                    page_icon=":clipboard:", layout="wide")
-
-auth.require_login()
 st.title("Logesti")
 
 FILE_ID = utils.FILE_ID

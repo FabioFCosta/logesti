@@ -9,8 +9,6 @@ import pandas as pd
 import streamlit as st
 import uuid
 from dotenv import load_dotenv
-import auth
-
 
 
 load_dotenv()
@@ -23,13 +21,7 @@ SCOPES = [
 FILE_ID = os.getenv("FILE_ID") or st.secrets.get("FILE_ID")
 print(f"Using FILE_ID: {FILE_ID}")
 def authenticate():
-    creds = None    
-    try:
-        auth.require_login()
-    except Exception as e:
-        st.error(f"Authentication error: {e}")
-        st.stop()
-
+    creds = None
 
     # Try Streamlit Secrets (service account)
     try:

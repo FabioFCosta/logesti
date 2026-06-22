@@ -4,15 +4,11 @@ import pandas as pd
 import uuid
 import time
 from dateutil.relativedelta import relativedelta
-import auth
 
-
+FILE_ID = utils.FILE_ID
 
 st.set_page_config(page_title="Logesti - Contas a Pagar",
                    page_icon=":money_with_wings:", layout="wide")
-
-auth.require_login()
-FILE_ID = utils.FILE_ID
 st.title("💸 Contas a Pagar")
 
 

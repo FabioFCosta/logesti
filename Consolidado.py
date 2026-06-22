@@ -3,11 +3,8 @@ import pandas as pd
 import utils
 import plotly.graph_objects as go
 import plotly.express as px
-import auth
-
 
 st.set_page_config(page_title="Logesti - Consolidado", page_icon=":bar_chart:", layout="wide")
-auth.require_login()
 st.title("Consolidado")
 st.subheader("Visão geral das receitas, despesas e lucros por cliente")
 
