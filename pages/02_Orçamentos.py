@@ -61,7 +61,7 @@ with tab1:
 
 with tab2:
     id_to_label = {
-        row["id"]: f'{row["nome"]} ({row["endereco"]})'
+        row["id"]: f'{row["nome"]} {"" if pd.isna(row["endereco"]) else f"({row["endereco"]})"}'
         for _, row in orcamentos.iterrows()
     }
 

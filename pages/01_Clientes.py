@@ -60,7 +60,7 @@ with tab1:
                 st.error(f"Erro ao criar cliente: {e}")
 
 id_to_label = {
-    row["id"]: f'{row["nome"]} ({row["endereco"]})'
+    row["id"]: f'{row["nome"]} {"" if pd.isna(row["endereco"]) else f"({row["endereco"]})"}'
     for _, row in clientes.iterrows()
 }
 
