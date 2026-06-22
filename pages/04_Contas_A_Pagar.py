@@ -145,13 +145,13 @@ df = build_financial_view(outcomes, payments)
 clientes, orcamentos = utils.get_clientes_and_orcamentos()
 
 clientes_map = {
-    row["id"]: f'{row["nome"]} {"" if pd.isna(row["endereco"]) else f"({row["endereco"]})"}'
+    row["id"]: f'{row["nome"]} {"" if pd.isna(row["endereco"]) else f"({row['endereco']})"}'
     for _, row in clientes.iterrows()
     if row["active"] == True
 }
 
 orcamentos_map = {
-    row["id"]: f'{row["nome"]} {"" if pd.isna(row["endereco"]) else f"({row["endereco"]})"}'
+    row["id"]: f'{row["nome"]} {"" if pd.isna(row["endereco"]) else f"({row['endereco']})"}'
     for _, row in orcamentos.iterrows()
     if row["active"] == True
 }
