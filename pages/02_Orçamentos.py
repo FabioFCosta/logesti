@@ -6,7 +6,8 @@ import utils
 from googleapiclient.discovery import build
 
 
-st.set_page_config(page_title="Logesti - Orçamentos", page_icon=":clipboard:", layout="wide")
+st.set_page_config(page_title="Logesti - Orçamentos",
+                   page_icon=":clipboard:", layout="wide")
 st.title("Logesti")
 
 FILE_ID = utils.FILE_ID
@@ -24,7 +25,8 @@ with st.expander("Tabela de orçamentos", False):
         use_container_width=True
     )
 
-tab1, tab2, tab3, tab4 = st.tabs(["Criar novo", "Editar", "Enviar para clientes", "Excluir"])
+tab1, tab2, tab3, tab4 = st.tabs(
+    ["Criar novo", "Editar", "Enviar para clientes", "Excluir"])
 
 with tab1:
     with st.form("add_orcamento"):
@@ -51,7 +53,7 @@ with tab1:
                 [orcamentos, pd.DataFrame([new_row])], ignore_index=True)
 
             try:
-                utils.save_sheet(FILE_ID,"ORCAMENTOS_DB", orcamentos)
+                utils.save_sheet(FILE_ID, "ORCAMENTOS_DB", orcamentos)
                 st.session_state.orcamentos = orcamentos
                 st.success("Orçamento adicionado!")
                 time.sleep(3)
@@ -61,7 +63,11 @@ with tab1:
 
 with tab2:
     id_to_label = {
-        row["id"]: f'{row["nome"]} {"" if pd.isna(row["endereco"]) else f"({row['endereco']})"}'
+        row["id"]: (
+            row["nome"]
+            if pd.isna(row["endereco"])
+            else f'{row["nome"]} ({row["endereco"]})'
+        )
         for _, row in orcamentos.iterrows()
     }
 
@@ -91,14 +97,14 @@ with tab2:
         if submitted:
             orcamentos.loc[orcamentos["id"] == selected_id, "nome"] = nome
             orcamentos.loc[orcamentos["id"] ==
-                        selected_id, "contato"] = contato
+                           selected_id, "contato"] = contato
             orcamentos.loc[orcamentos["id"] == selected_id, "e-mail"] = email
             orcamentos.loc[orcamentos["id"] ==
-                        selected_id, "endereco"] = endereco
+                           selected_id, "endereco"] = endereco
             orcamentos.loc[orcamentos["id"] == selected_id, "km"] = km
 
             try:
-                utils.save_sheet(FILE_ID,"ORCAMENTOS_DB", orcamentos)
+                utils.save_sheet(FILE_ID, "ORCAMENTOS_DB", orcamentos)
                 st.session_state.orcamentos = orcamentos
                 st.success("Atualizado!")
                 time.sleep(3)
@@ -112,17 +118,20 @@ with tab3:
         "Selecione orçamento para mover para a aba de clientes:",
         active_orcamentos["id"],
         format_func=lambda x: orcamentos.loc[orcamentos["id"]
-                                            == x, "nome"].values[0],
-                                            key="move_client_widget"
+                                             == x, "nome"].values[0],
+        key="move_client_widget"
     )
     if st.button("Mover para clientes", key="move_orcamento"):
-        clients_to_move = orcamentos.loc[orcamentos["id"].isin(selected_ids)].copy()
+        clients_to_move = orcamentos.loc[orcamentos["id"].isin(
+            selected_ids)].copy()
         clients_to_move["active"] = True
-        new_clientes = pd.concat([clientes, clients_to_move], ignore_index=True)
+        new_clientes = pd.concat(
+            [clientes, clients_to_move], ignore_index=True)
 
         try:
             utils.save_sheet(FILE_ID, "CLIENTES_DB", new_clientes)
-            orcamentos.loc[orcamentos["id"].isin(selected_ids), "active"] = False
+            orcamentos.loc[orcamentos["id"].isin(
+                selected_ids), "active"] = False
             utils.save_sheet(FILE_ID, "ORCAMENTOS_DB", orcamentos)
 
             st.session_state.clientes = new_clientes
@@ -136,6 +145,7 @@ with tab3:
         time.sleep(3)
         st.rerun()
 
+
 @st.dialog(title="Confirmar desativação de orçamentos", width="small")
 def confirm_deactivate_orcamentos():
     pending = st.session_state.get("pending_deactivate_orcamentos", [])
@@ -144,12 +154,14 @@ def confirm_deactivate_orcamentos():
         return
 
     st.write("Tem certeza que deseja desativar os orçamentos abaixo?")
-    info_df = orcamentos[orcamentos["id"].isin(pending)][["nome", "contato", "endereco"]]
+    info_df = orcamentos[orcamentos["id"].isin(
+        pending)][["nome", "contato", "endereco"]]
     st.dataframe(info_df)
 
     col1, col2 = st.columns(2, vertical_alignment="center")
     with col1:
-        confirm = st.button("Sim, desativar", type="primary", use_container_width=True)
+        confirm = st.button("Sim, desativar", type="primary",
+                            use_container_width=True)
     with col2:
         cancel = st.button("Cancelar", use_container_width=True)
 
@@ -171,16 +183,15 @@ def confirm_deactivate_orcamentos():
         time.sleep(0.5)
         st.rerun()
 
+
 with tab4:
     selected_ids = st.multiselect(
         "Selecione orçamentos para excluir",
         active_orcamentos["id"],
         format_func=lambda x: orcamentos.loc[orcamentos["id"]
-                                            == x, "nome"].values[0]
+                                             == x, "nome"].values[0]
     )
 
     if st.button("Desativar", key="deactivate_orcamento"):
         st.session_state.pending_deactivate_orcamentos = selected_ids
         confirm_deactivate_orcamentos()
-
-

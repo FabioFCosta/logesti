@@ -6,12 +6,13 @@ import time
 import utils
 from googleapiclient.discovery import build
 
-st.set_page_config(page_title="Logesti - Clientes", page_icon=":busts_in_silhouette:", layout="wide")
+st.set_page_config(page_title="Logesti - Clientes",
+                   page_icon=":busts_in_silhouette:", layout="wide")
 st.title("Logesti")
 
-FILE_ID= utils.FILE_ID
+FILE_ID = utils.FILE_ID
 
-clientes,orcamentos = utils.get_clientes_and_orcamentos()
+clientes, orcamentos = utils.get_clientes_and_orcamentos()
 
 st.subheader("Clientes")
 
@@ -51,7 +52,7 @@ with tab1:
                 [clientes, pd.DataFrame([new_row])], ignore_index=True)
 
             try:
-                utils.save_sheet(FILE_ID,"CLIENTES_DB", clientes)
+                utils.save_sheet(FILE_ID, "CLIENTES_DB", clientes)
                 st.session_state.clientes = clientes
                 st.success("Cliente adicionado!")
                 time.sleep(3)
@@ -60,7 +61,11 @@ with tab1:
                 st.error(f"Erro ao criar cliente: {e}")
 
 id_to_label = {
-    row["id"]: f'{row["nome"]} {"" if pd.isna(row["endereco"]) else f"({row['endereco']})"}'
+    row["id"]: (
+        row["nome"]
+        if pd.isna(row["endereco"])
+        else f'{row["nome"]} ({row["endereco"]})'
+    )
     for _, row in clientes.iterrows()
 }
 
@@ -87,7 +92,6 @@ with tab2:
         endereco = st.text_input("Endereço", client["endereco"])
         km = st.number_input("KM", value=client["km"], step=1)
 
-
         submitted = st.form_submit_button("Salvar")
 
         if submitted:
@@ -97,7 +101,7 @@ with tab2:
             clientes.loc[clientes["id"] == selected_id, "endereco"] = endereco
             clientes.loc[clientes["id"] == selected_id, "km"] = km
             try:
-                utils.save_sheet(FILE_ID,"CLIENTES_DB", clientes)
+                utils.save_sheet(FILE_ID, "CLIENTES_DB", clientes)
                 st.session_state.clientes = clientes
                 st.success("Atualizado!")
                 time.sleep(3)
@@ -105,6 +109,7 @@ with tab2:
             except Exception as e:
                 st.error(f"Erro ao salvar a atualização do cliente: {e}")
                 clientes = st.session_state.clientes
+
 
 @st.dialog(title="Confirmar desativação de clientes", width="small")
 def confirm_deactivate_clients():
@@ -114,12 +119,14 @@ def confirm_deactivate_clients():
         return
 
     st.write("Tem certeza que deseja desativar os clientes abaixo?")
-    info_df = clientes[clientes["id"].isin(pending)][["nome", "contato", "endereco"]]
+    info_df = clientes[clientes["id"].isin(
+        pending)][["nome", "contato", "endereco"]]
     st.dataframe(info_df)
 
     col1, col2 = st.columns(2, vertical_alignment="center")
     with col1:
-        confirm = st.button("Sim, desativar", type="primary", use_container_width=True)
+        confirm = st.button("Sim, desativar", type="primary",
+                            use_container_width=True)
     with col2:
         cancel = st.button("Cancelar", use_container_width=True)
 
@@ -141,12 +148,13 @@ def confirm_deactivate_clients():
         time.sleep(0.5)
         st.rerun()
 
+
 with tab3:
     selected_ids = st.multiselect(
         "Selecione clientes para desativar",
         active_clientes["id"],
         format_func=lambda x: clientes.loc[clientes["id"]
-                                        == x, "nome"].values[0]
+                                           == x, "nome"].values[0]
     )
 
     if st.button("Desativar", key="deactivate_client"):

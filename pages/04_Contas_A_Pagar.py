@@ -11,6 +11,7 @@ st.set_page_config(page_title="Logesti - Contas a Pagar",
                    page_icon=":money_with_wings:", layout="wide")
 st.title("💸 Contas a Pagar")
 
+
 def ensure_outcome_ids(file_id, df):
     df = df.copy()
 
@@ -137,7 +138,7 @@ outcomes = ensure_outcome_ids(FILE_ID, outcomes)
 outcomes_types = [
     "Visita", "Mão de obra", "Pro Labore",
     "Adquirir Ativo", "Fornecedor", "Impostos/Taxas",
-    "Utilização Carro", "Utilização Moto", "Gasolina", "Reembolso", "Alimentação", "Contabilidade", "Entrega Obras","Frete", "Outros"
+    "Utilização Carro", "Utilização Moto", "Gasolina", "Reembolso", "Alimentação", "Contabilidade", "Entrega Obras", "Frete", "Outros"
 ]
 
 df = build_financial_view(outcomes, payments)
@@ -145,13 +146,21 @@ df = build_financial_view(outcomes, payments)
 clientes, orcamentos = utils.get_clientes_and_orcamentos()
 
 clientes_map = {
-    row["id"]: f'{row["nome"]} {"" if pd.isna(row["endereco"]) else f"({row['endereco']})"}'
+    row["id"]: (
+        row["nome"]
+        if pd.isna(row["endereco"])
+        else f'{row["nome"]} ({row["endereco"]})'
+    )
     for _, row in clientes.iterrows()
     if row["active"] == True
 }
 
 orcamentos_map = {
-    row["id"]: f'{row["nome"]} {"" if pd.isna(row["endereco"]) else f"({row['endereco']})"}'
+    row["id"]: (
+        row["nome"]
+        if pd.isna(row["endereco"])
+        else f'{row["nome"]} ({row["endereco"]})'
+    )
     for _, row in orcamentos.iterrows()
     if row["active"] == True
 }

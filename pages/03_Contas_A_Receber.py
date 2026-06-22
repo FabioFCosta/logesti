@@ -6,11 +6,14 @@ import time
 
 FILE_ID = utils.FILE_ID
 
-st.set_page_config(page_title="Logesti - Contas a Receber", page_icon=":moneybag:", layout="wide")
+st.set_page_config(page_title="Logesti - Contas a Receber",
+                   page_icon=":moneybag:", layout="wide")
 
 # ==============================
 # ENSURE IDS + SAVE
 # ==============================
+
+
 def ensure_income_ids(file_id, df):
     df = df.copy()
 
@@ -161,7 +164,7 @@ def render_group_progress(df, selected_id):
     pago = row["pago_grupo"]
 
     progresso = 0 if total == 0 else pago / total
-    col1, col2= st.columns(2)
+    col1, col2 = st.columns(2)
     col1.metric("Redebido", utils.format_brl(pago))
     col2.metric("Total", utils.format_brl(total))
 
@@ -187,7 +190,11 @@ df = build_financial_view(incomes, payments)
 clientes, orcamentos = utils.get_clientes_and_orcamentos()
 
 clientes_map = {
-    row["id"]: f'{row["nome"]} {"" if pd.isna(row["endereco"]) else f"({row['endereco']})"}'
+    row["id"]: (
+        row["nome"]
+        if pd.isna(row["endereco"])
+        else f'{row["nome"]} ({row["endereco"]})'
+    )
     for _, row in clientes.iterrows()
     if row["active"] == True
 }
@@ -220,11 +227,12 @@ with col4:
     cliente = st.selectbox(
         "Cliente",
         client_options,
-        format_func=lambda x: "Todos" if x == "Todos" else clientes_map.get(x, x)
+        format_func=lambda x: "Todos" if x == "Todos" else clientes_map.get(
+            x, x)
     )
 
 filtered = df.copy()
-filtered=filtered[filtered.get("active", "TRUE") != "FALSE"]
+filtered = filtered[filtered.get("active", "TRUE") != "FALSE"]
 
 if ano != "Todos":
     filtered = filtered[filtered["data"].dt.year == ano]
@@ -258,7 +266,8 @@ with st.expander("Receitas em aberto nos filtros", expanded=True):
         st.write("Nenhuma receita em aberto com os filtros selecionados.")
     else:
         filtered_open = filtered_open.assign(
-            cliente=filtered_open["client_id"].map(clientes_map).fillna(filtered_open["client_id"])
+            cliente=filtered_open["client_id"].map(
+                clientes_map).fillna(filtered_open["client_id"])
         )
         st.dataframe(
             filtered_open[
@@ -324,7 +333,8 @@ with tab1:
             for i in range(num_rows):
                 st.subheader(f"Receita {i+1}")
                 descricao = st.text_input(f"Descrição {i+1}", key=f"desc_{i}")
-                valor = st.number_input(f"Valor {i+1}", min_value=0.0, key=f"val_{i}")
+                valor = st.number_input(
+                    f"Valor {i+1}", min_value=0.0, key=f"val_{i}")
                 client_id = st.selectbox(
                     f"Cliente {i+1}",
                     options=[""] + list(clientes_map.keys()),
@@ -334,7 +344,8 @@ with tab1:
                 data = st.date_input(f"Data {i+1}", key=f"date_{i}")
                 tipo = st.selectbox(
                     f"Tipo {i+1}",
-                    options=["Reembolso", "Acompanhamento", "Projeto", "Administração","Orçamento", "Perícia", "Outros"],
+                    options=["Reembolso", "Acompanhamento", "Projeto",
+                             "Administração", "Orçamento", "Perícia", "Outros"],
                     key=f"tipo_{i}"
                 )
                 incomes_data.append({
@@ -350,9 +361,11 @@ with tab1:
             if submitted:
                 try:
                     new_df = pd.DataFrame(incomes_data)
-                    new_df["data"] = pd.to_datetime(new_df["data"]).dt.strftime("%Y-%m-%d")
+                    new_df["data"] = pd.to_datetime(
+                        new_df["data"]).dt.strftime("%Y-%m-%d")
                     final_df = pd.concat([incomes, new_df], ignore_index=True)
-                    final_df["data"] = pd.to_datetime(final_df["data"]).dt.strftime("%Y-%m-%d")
+                    final_df["data"] = pd.to_datetime(
+                        final_df["data"]).dt.strftime("%Y-%m-%d")
                     utils.save_incomes(FILE_ID, final_df)
                     for i in range(num_rows):
                         for key in [f"desc_{i}", f"val_{i}", f"client_{i}", f"date_{i}", f"tipo_{i}"]:
@@ -363,8 +376,6 @@ with tab1:
                 except Exception as e:
                     st.error(f"Erro ao salvar: {e}")
 
-
-
     else:
         parcelas = []
         datas = []
@@ -373,7 +384,8 @@ with tab1:
             "Descrição", placeholder="Digite uma descrição...")
         total_valor = st.number_input("Valor total", min_value=0.0)
         num_parcelas = st.number_input("Qtd parcelas", 2, 24, 2)
-        tipo = st.selectbox("Tipo de receita", ["Reembolso", "Acompanhamento", "Projeto", "Administração", "Orçamento", "Perícia", "Outros"])
+        tipo = st.selectbox("Tipo de receita", [
+                            "Reembolso", "Acompanhamento", "Projeto", "Administração", "Orçamento", "Perícia", "Outros"])
         client_id = st.selectbox(
             "Cliente",
             options=[""] + list(clientes_map.keys()),
@@ -399,7 +411,8 @@ with tab1:
 
             # Check if auto-fill was requested and compute values BEFORE rendering
             if st.session_state.get("auto_fill_requested", False):
-                filled = [st.session_state.get(f"create_parc_{i}", 0.0) for i in range(num_parcelas)]
+                filled = [st.session_state.get(
+                    f"create_parc_{i}", 0.0) for i in range(num_parcelas)]
                 remaining = total_valor - sum(filled)
                 blanks = [i for i, v in enumerate(filled) if v == 0.0]
                 if blanks and remaining > 0:
@@ -425,7 +438,8 @@ with tab1:
                 st.session_state["auto_fill_requested"] = True
                 st.rerun()
 
-            parcelas = [st.session_state.get(f"create_parc_{i}", 0.0) for i in range(num_parcelas)]
+            parcelas = [st.session_state.get(
+                f"create_parc_{i}", 0.0) for i in range(num_parcelas)]
 
         for i in range(num_parcelas):
             datas.append(pd.to_datetime(base_date) + pd.DateOffset(months=i))
@@ -436,7 +450,7 @@ with tab1:
     if parcelar:
         def add_incomes(file_id, existing_df, new_rows, parcelas=None, datas=None):
             new_rows = new_rows.copy()
-            
+
             grupo_id = generate_group_id()
 
             rows = []
@@ -453,7 +467,7 @@ with tab1:
                     "active": "TRUE"
                 })
 
-            new_rows = pd.DataFrame(rows)            
+            new_rows = pd.DataFrame(rows)
 
             new_rows["data"] = pd.to_datetime(
                 new_rows["data"]).dt.strftime("%Y-%m-%d")
@@ -468,7 +482,7 @@ with tab1:
 
         if st.button("💾 Salvar receitas"):
             try:
-                
+
                 base_df = pd.DataFrame([{
                     "descricao": description,
                     "valor": total_valor,
@@ -550,7 +564,7 @@ with tab3:
 
     if selected_id is not None:
         with st.form("edit_income"):
-            descricao = st.text_input("Descrição", income["descricao"] )
+            descricao = st.text_input("Descrição", income["descricao"])
             valor = st.number_input("Valor", value=float(income["valor"]))
             client_id = st.selectbox(
                 "Cliente",
@@ -610,6 +624,7 @@ with tab3:
     else:
         st.info("Selecione uma receita para editar.")
 
+
 @st.dialog(title="Confirmar exclusão de receita", width="small")
 def confirm_delete_income():
     if selected_id is None:
@@ -617,12 +632,15 @@ def confirm_delete_income():
         return
 
     row = df[df["id"] == selected_id].iloc[0]
-    st.write("Tem certeza que deseja excluir esta receita? Esta ação não pode ser desfeita.")
-    st.markdown(f"**{utils.format_date_br(row['data'])} | {row['descricao']} ({utils.format_brl(row['saldo'])})**")
+    st.write(
+        "Tem certeza que deseja excluir esta receita? Esta ação não pode ser desfeita.")
+    st.markdown(
+        f"**{utils.format_date_br(row['data'])} | {row['descricao']} ({utils.format_brl(row['saldo'])})**")
 
     col1, col2 = st.columns(2, vertical_alignment="center")
     with col1:
-        confirm = st.button("Sim, excluir", type="primary", use_container_width=True)
+        confirm = st.button("Sim, excluir", type="primary",
+                            use_container_width=True)
 
     with col2:
         cancel = st.button("Cancelar", use_container_width=True)
@@ -641,6 +659,7 @@ def confirm_delete_income():
         st.info("Exclusão cancelada.")
         time.sleep(0.5)
         st.rerun()
+
 
 with tab4:
     if selected_id is not None:
