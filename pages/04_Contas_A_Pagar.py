@@ -137,7 +137,7 @@ outcomes = ensure_outcome_ids(FILE_ID, outcomes)
 outcomes_types = [
     "Visita", "Mão de obra", "Pro Labore",
     "Adquirir Ativo", "Fornecedor", "Impostos/Taxas",
-    "Utilização Carro", "Utilização Moto", "Gasolina", "Reembolso", "Alimentação", "Contabilidade", "Entrega Obras","Frete"
+    "Utilização Carro", "Utilização Moto", "Gasolina", "Reembolso", "Alimentação", "Contabilidade", "Entrega Obras","Frete", "Outros"
 ]
 
 df = build_financial_view(outcomes, payments)
