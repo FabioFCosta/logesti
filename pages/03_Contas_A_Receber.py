@@ -3,12 +3,16 @@ import utils
 import pandas as pd
 import uuid
 import time
+import auth
 
-FILE_ID = utils.FILE_ID
+
 
 st.set_page_config(page_title="Logesti - Contas a Receber",
                    page_icon=":moneybag:", layout="wide")
 
+auth.require_login()
+
+FILE_ID = utils.FILE_ID
 # ==============================
 # ENSURE IDS + SAVE
 # ==============================
