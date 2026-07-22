@@ -43,16 +43,13 @@ for _, row in clientes.iterrows():
     if row['nome'] not in incomes["cliente_nome"].unique() and row['nome'] not in outcomes["cliente_nome"].unique():
         continue
   
-    pro_labore = outcomes[outcomes["cliente_nome"] == row['nome']].loc[outcomes["tipo"] == "Pro Labore"]["valor"].sum()
-    outcome_sum = outcome_sum - pro_labore
     profit = income_sum - outcome_sum
     consolidated_by_client = pd.concat([consolidated_by_client, pd.DataFrame({
         "cliente_nome": [row['nome']],
         "incomes": [income_sum],
         "outcomes": [outcome_sum],
         "profit": [profit],
-        "pro-labore": [pro_labore],
-        "caixa":[profit-pro_labore]
+        "caixa":[profit]
     })], ignore_index=True)
 
 for _, row in orcamentos.iterrows():
@@ -66,34 +63,66 @@ for _, row in orcamentos.iterrows():
     income_sum = incomes[incomes["cliente_nome"] == row['nome']]["valor"].sum()
     outcome_sum = outcomes[outcomes["cliente_nome"] == row['nome']]["valor"].sum()
   
-    pro_labore = outcomes[outcomes["cliente_nome"] == row['nome']].loc[outcomes["tipo"] == "Pro Labore"]["valor"].sum()
-    outcome_sum = outcome_sum - pro_labore
     profit = income_sum - outcome_sum
     consolidated_by_client = pd.concat([consolidated_by_client, pd.DataFrame({
         "cliente_nome": [row['nome']],
         "incomes": [income_sum],
         "outcomes": [outcome_sum],
         "profit": [profit],
-        "pro-labore": [pro_labore],
-        "caixa":[profit-pro_labore]
+        "caixa":[profit]
+
     })], ignore_index=True)
 
 
 
 col1, col2, col3 = st.columns(3)
 with col1:
-    st.metric("Total Receitas", f"R$ {consolidated_by_client['incomes'].sum():,.2f}")
-with col2:
-    st.metric("Total Despesas", f"R$ {consolidated_by_client['outcomes'].sum():,.2f}")
+    st.markdown(
+        f"""
+        <div style="background-color: #141414; padding: 15px; border-radius: 8px; border-left: 5px solid #2e7d32;">
+            <p style="margin: 0; font-size: 14px; color: #555;">Total Receitas</p>
+            <h2 style="margin: 0; color: #2e7d32; font-size: 28px; font-weight: bold;">R$ {consolidated_by_client['incomes'].sum():,.2f}</h2>
+        </div>
+    """,
+        unsafe_allow_html=True,
+    )
 
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.metric("Lucro Total", f"R$ {consolidated_by_client['profit'].sum():,.2f}")
 with col2:
-    st.metric("Pro Labore Total", f"R$ {consolidated_by_client['pro-labore'].sum():,.2f}")
+    st.markdown(
+        f"""
+        <div style="background-color: #141414; padding: 15px; border-radius: 8px; border-left: 5px solid #c62828;">
+            <p style="margin: 0; font-size: 14px; color: #555;">Total Despesas</p>
+            <h2 style="margin: 0; color: #c62828; font-size: 28px; font-weight: bold;">R$ {consolidated_by_client['outcomes'].sum():,.2f}</h2>
+        </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
 with col3:
-    st.metric("Caixa Total", f"R$ {consolidated_by_client['caixa'].sum():,.2f}")
+    st.markdown(
+        f"""
+        <div style="background-color: #141414; padding: 15px; border-radius: 8px; border-left: 5px solid #666;">
+            <p style="margin: 0; font-size: 14px; color: #555;">Lucro Total</p>
+            <h2 style="margin: 0; color: #333; font-size: 28px; font-weight: bold;">R$ {consolidated_by_client['profit'].sum():,.2f}</h2>
+        </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+st.write("")  # spacing
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.markdown(
+        f"""
+        <div style="background-color: #141414; padding: 15px; border-radius: 8px; border-left: 5px solid #1565c0;">
+            <p style="margin: 0; font-size: 14px; color: #555;">Caixa Total</p>
+            <h2 style="margin: 0; color: #1565c0; font-size: 28px; font-weight: bold;">R$ {consolidated_by_client['caixa'].sum():,.2f}</h2>
+        </div>
+    """,
+        unsafe_allow_html=True,
+    )
+st.write("")  
+
     
 with st.expander("Consolidado por cliente", False):
     st.dataframe(consolidated_by_client, use_container_width=True)
@@ -115,16 +144,58 @@ for _, row in outcomes[(outcomes["cliente_nome"].isna())].iterrows():
     
 
 caixa_total = consolidated_by_client['caixa'].sum()
+pro_labore_total = outcomes[outcomes["tipo"]=="Pro Labore"]["valor"].sum()
 despesa_total = consolidated['valor'].sum()
 
 st.subheader("Visão das despesas da empresa")
 col1, col2, col3 = st.columns(3)
 with col1:
-    st.metric("Caixa Total", f"R$ {caixa_total:,.2f}")
+    st.markdown(
+        f"""
+        <div style="background-color: #141414; padding: 15px; border-radius: 8px; border-left: 5px solid #1565c0;">
+            <p style="margin: 0; font-size: 14px; color: #555;">Caixa Total</p>
+            <h2 style="margin: 0; color: #1565c0; font-size: 28px; font-weight: bold;">R$ {caixa_total:,.2f}</h2>
+        </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
 with col2:
-    st.metric("Despesa Total", f"R$ {despesa_total:,.2f}")
+    st.markdown(
+        f"""
+        <div style="background-color: #141414; padding: 15px; border-radius: 8px; border-left: 5px solid #c62828;">
+            <p style="margin: 0; font-size: 14px; color: #555;">Despesa Total</p>
+            <h2 style="margin: 0; color: #c62828; font-size: 28px; font-weight: bold;">R$ {despesa_total:,.2f}</h2>
+        </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
 with col3:
-    st.metric("Caixa Atual", f"R$ {caixa_total-despesa_total:,.2f}")
+    st.markdown(
+        f"""
+        <div style="background-color: #141414; padding: 15px; border-radius: 8px; border-left: 5px solid #666;">
+            <p style="margin: 0; font-size: 14px; color: #555;">Pro Labore Total</p>
+            <h2 style="margin: 0; color: #333; font-size: 28px; font-weight: bold;">R$ {pro_labore_total:,.2f}</h2>
+        </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+st.write("")  
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.markdown(
+        f"""
+        <div style="background-color: #141414; padding: 15px; border-radius: 8px; border-left: 5px solid #1565c0;">
+            <p style="margin: 0; font-size: 14px; color: #555;">Caixa Atual</p>
+            <h2 style="margin: 0; color: #1565c0; font-size: 28px; font-weight: bold;">R$ {caixa_total-despesa_total:,.2f}</h2>
+        </div>
+    """,
+        unsafe_allow_html=True,
+    )
+st.write("")  
+
 with st.expander("Despesas da empresa", False):
     st.dataframe(consolidated, use_container_width=True)
 
@@ -164,24 +235,68 @@ st.plotly_chart(fig_client_monthly, use_container_width=True)
 
 # 2. Caixa and Enterprise Outcomes by Month
 st.subheader("2️⃣ Despesas da Empresa (Caixa vs Demais) por Mês")
-enterprise_outcomes = outcomes_with_date[(outcomes_with_date['cliente_nome'].isna()) | (outcomes_with_date['cliente_nome'] == '')].copy()
-caixa_outcome_by_month = enterprise_outcomes[enterprise_outcomes['quem_pagar'] == 'CAIXA'].groupby('mes_ano')['valor'].sum()
-other_outcome_by_month = enterprise_outcomes[enterprise_outcomes['quem_pagar'] != 'CAIXA'].groupby('mes_ano')['valor'].sum()
 
-all_months_enterprise = caixa_outcome_by_month.index.union(other_outcome_by_month.index)
-caixa_outcome_by_month = caixa_outcome_by_month.reindex(all_months_enterprise, fill_value=0)
-other_outcome_by_month = other_outcome_by_month.reindex(all_months_enterprise, fill_value=0)
+# Merge outcomes with outcome_payments to capture all paid expenses
+enterprise_outcomes = outcomes_with_date[
+    (outcomes_with_date['cliente_nome'].isna())
+    | (outcomes_with_date['cliente_nome'] == '')
+].copy()
+
+# Normalize text for matching
+enterprise_outcomes['quem_pagar_clean'] = (
+    enterprise_outcomes['quem_pagar'].fillna('').astype(str).str.strip().str.upper()
+)
+
+# Group by normalized column
+caixa_outcome_by_month = enterprise_outcomes[
+    enterprise_outcomes['quem_pagar_clean'].str.contains('CAIXA', na=False)
+].groupby('mes_ano')['valor'].sum()
+
+other_outcome_by_month = enterprise_outcomes[
+    ~enterprise_outcomes['quem_pagar_clean'].str.contains('CAIXA', na=False)
+].groupby('mes_ano')['valor'].sum()
+
+all_months_enterprise = caixa_outcome_by_month.index.union(
+    other_outcome_by_month.index
+)
+caixa_outcome_by_month = caixa_outcome_by_month.reindex(
+    all_months_enterprise, fill_value=0
+)
+other_outcome_by_month = other_outcome_by_month.reindex(
+    all_months_enterprise, fill_value=0
+)
 
 df_enterprise_monthly = pd.DataFrame({
     'Mês': [str(m) for m in all_months_enterprise],
     'Caixa': caixa_outcome_by_month.values,
-    'Outros': other_outcome_by_month.values
+    'Outros': other_outcome_by_month.values,
 })
 
 fig_enterprise_monthly = go.Figure()
-fig_enterprise_monthly.add_trace(go.Bar(x=df_enterprise_monthly['Mês'], y=df_enterprise_monthly['Caixa'], name='Caixa', marker_color='orange'))
-fig_enterprise_monthly.add_trace(go.Bar(x=df_enterprise_monthly['Mês'], y=df_enterprise_monthly['Outros'], name='Outras Despesas', marker_color='purple'))
-fig_enterprise_monthly.update_layout(barmode='group', title='Despesas da Empresa por Mês', xaxis_title='Mês', yaxis_title='Valor (R$)', height=400, hovermode='x unified')
+fig_enterprise_monthly.add_trace(
+    go.Bar(
+        x=df_enterprise_monthly['Mês'],
+        y=df_enterprise_monthly['Caixa'],
+        name='Caixa',
+        marker_color='orange',
+    )
+)
+fig_enterprise_monthly.add_trace(
+    go.Bar(
+        x=df_enterprise_monthly['Mês'],
+        y=df_enterprise_monthly['Outros'],
+        name='Outras Despesas',
+        marker_color='purple',
+    )
+)
+fig_enterprise_monthly.update_layout(
+    barmode='group',
+    title='Despesas da Empresa por Mês',
+    xaxis_title='Mês',
+    yaxis_title='Valor (R$)',
+    height=400,
+    hovermode='x unified',
+)
 st.plotly_chart(fig_enterprise_monthly, use_container_width=True)
 
 # Create columns for pie charts
