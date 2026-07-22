@@ -248,75 +248,26 @@ fig_client_monthly.update_layout(barmode='group', title='Receitas e Despesas dos
 st.plotly_chart(fig_client_monthly, use_container_width=True)
 
 # 2. Caixa and Enterprise Outcomes by Month
-st.subheader("2️⃣ Despesas da Empresa (Caixa vs Demais) por Mês")
+st.subheader("1️⃣ Receitas e Despesas Gerais por Mês")
+client_income_by_month = incomes_with_date[incomes_with_date['cliente_nome'].notna() & (incomes_with_date['cliente_nome'] != '')].groupby('mes_ano')['valor'].sum()
+outcome_by_month = outcomes_with_date.groupby('mes_ano')['valor'].sum()
 
-# Keep enterprise expenses separately from customer-linked ones
-enterprise_outcomes = outcomes_with_date[
-    outcomes_with_date['cliente_nome'].apply(lambda x: pd.isna(x) or str(x).strip() == '')
-].copy()
+# Ensure both series have the same index
+all_months = client_income_by_month.index.union(outcome_by_month.index)
+client_income_by_month = client_income_by_month.reindex(all_months, fill_value=0)
+outcome_by_month = outcome_by_month.reindex(all_months, fill_value=0)
 
-# Normalize text for matching in multiple relevant columns
-enterprise_outcomes['quem_pagar_clean'] = (
-    enterprise_outcomes['quem_pagar'].fillna('').astype(str).str.strip().str.upper()
-)
-enterprise_outcomes['descricao_clean'] = (
-    enterprise_outcomes['descricao'].fillna('').astype(str).str.strip().str.upper()
-)
-enterprise_outcomes['tipo_clean'] = (
-    enterprise_outcomes['tipo'].fillna('').astype(str).str.strip().str.upper()
-)
-
-caixa_mask = (
-    enterprise_outcomes['quem_pagar_clean'].str.contains('CAIXA', na=False)
-    | enterprise_outcomes['descricao_clean'].str.contains('CAIXA', na=False)
-    | enterprise_outcomes['tipo_clean'].str.contains('CAIXA', na=False)
-)
-
-caixa_outcome_by_month = enterprise_outcomes.loc[caixa_mask].groupby('mes_ano')['valor'].sum()
-other_outcome_by_month = enterprise_outcomes.loc[~caixa_mask].groupby('mes_ano')['valor'].sum()
-
-all_months_enterprise = caixa_outcome_by_month.index.union(
-    other_outcome_by_month.index
-)
-caixa_outcome_by_month = caixa_outcome_by_month.reindex(
-    all_months_enterprise, fill_value=0
-)
-other_outcome_by_month = other_outcome_by_month.reindex(
-    all_months_enterprise, fill_value=0
-)
-
-df_enterprise_monthly = pd.DataFrame({
-    'Mês': [str(m) for m in all_months_enterprise],
-    'Caixa': caixa_outcome_by_month.values,
-    'Outros': other_outcome_by_month.values,
+df_client_monthly = pd.DataFrame({
+    'Mês': [str(m) for m in all_months],
+    'Receitas': client_income_by_month.values,
+    'Despesas': outcome_by_month.values
 })
 
-fig_enterprise_monthly = go.Figure()
-fig_enterprise_monthly.add_trace(
-    go.Bar(
-        x=df_enterprise_monthly['Mês'],
-        y=df_enterprise_monthly['Caixa'],
-        name='Caixa',
-        marker_color='orange',
-    )
-)
-fig_enterprise_monthly.add_trace(
-    go.Bar(
-        x=df_enterprise_monthly['Mês'],
-        y=df_enterprise_monthly['Outros'],
-        name='Outras Despesas',
-        marker_color='purple',
-    )
-)
-fig_enterprise_monthly.update_layout(
-    barmode='group',
-    title='Despesas da Empresa por Mês',
-    xaxis_title='Mês',
-    yaxis_title='Valor (R$)',
-    height=400,
-    hovermode='x unified',
-)
-st.plotly_chart(fig_enterprise_monthly, use_container_width=True)
+fig_client_monthly = go.Figure()
+fig_client_monthly.add_trace(go.Bar(x=df_client_monthly['Mês'], y=df_client_monthly['Receitas'], name='Receitas', marker_color='green'))
+fig_client_monthly.add_trace(go.Bar(x=df_client_monthly['Mês'], y=df_client_monthly['Despesas'], name='Despesas', marker_color='red'))
+fig_client_monthly.update_layout(barmode='group', title='Receitas e Despesas Gerais por Mês', xaxis_title='Mês', yaxis_title='Valor (R$)', height=400, hovermode='x unified')
+st.plotly_chart(fig_client_monthly, use_container_width=True)
 
 # Create columns for pie charts
 col1, col2 = st.columns(2)
