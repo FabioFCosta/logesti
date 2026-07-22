@@ -203,9 +203,23 @@ clientes_map = {
 # FILTERS
 # ==============================
 st.subheader("Filtros")
-
+current_month = pd.Timestamp.now().month
 years = ["Todos"] + sorted(df["data"].dt.year.dropna().unique())
-months = ["Todos"] + list(range(1, 13))
+month_names = {
+    1: "Janeiro",
+    2: "Fevereiro",
+    3: "Março",
+    4: "Abril",
+    5: "Maio",
+    6: "Junho",
+    7: "Julho",
+    8: "Agosto",
+    9: "Setembro",
+    10: "Outubro",
+    11: "Novembro",
+    12: "Dezembro",
+}
+months = ["Todos"] + list(month_names.keys())
 status_options = ["Todos", "A Receber", "Recebido Parcialmente", "Recebido"]
 client_options = ["Todos"] + sorted(
     df["client_id"].dropna().unique(),
@@ -215,13 +229,19 @@ client_options = ["Todos"] + sorted(
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    ano = st.selectbox("Ano", years)
+    ano = st.selectbox("Ano", years, index=years.index(
+        pd.Timestamp.now().year) if pd.Timestamp.now().year in years else 0)
 
 with col2:
-    mes = st.selectbox("Mês", months)
+    mes = st.selectbox(
+        "Mês",
+        options=months,
+        format_func=lambda x: "Todos" if x == "Todos" else month_names[x],
+        index=months.index(current_month) if current_month in months else 0
+    )
 
 with col3:
-    status = st.selectbox("Status", status_options)
+    status = st.selectbox("Status", status_options, index=1)
 
 with col4:
     cliente = st.selectbox(
@@ -260,10 +280,10 @@ k1.metric("Total", utils.format_brl(total))
 k2.metric("Recebido", utils.format_brl(recebido))
 k3.metric("A Receber", utils.format_brl(saldo))
 
-with st.expander("Receitas em aberto nos filtros", expanded=True):
-    filtered_open = filtered[filtered["saldo"] > 0].copy()
+with st.expander("Receitas nos filtros", expanded=True):
+    filtered_open = filtered.copy()
     if filtered_open.empty:
-        st.write("Nenhuma receita em aberto com os filtros selecionados.")
+        st.write("Nenhuma receita com os filtros selecionados.")
     else:
         filtered_open = filtered_open.assign(
             cliente=filtered_open["client_id"].map(
@@ -566,6 +586,10 @@ with tab3:
         with st.form("edit_income"):
             descricao = st.text_input("Descrição", income["descricao"])
             valor = st.number_input("Valor", value=float(income["valor"]))
+            data = st.date_input(
+                "Data",
+                value=pd.to_datetime(income["data"]).date()
+            )
             client_id = st.selectbox(
                 "Cliente",
                 options=[""] + list(clientes_map.keys()),

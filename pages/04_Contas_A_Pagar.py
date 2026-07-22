@@ -173,12 +173,35 @@ st.subheader("Filtros")
 
 col1, col2 = st.columns(2)
 
+month_names = {
+    1: "Janeiro",
+    2: "Fevereiro",
+    3: "Março",
+    4: "Abril",
+    5: "Maio",
+    6: "Junho",
+    7: "Julho",
+    8: "Agosto",
+    9: "Setembro",
+    10: "Outubro",
+    11: "Novembro",
+    12: "Dezembro",
+}
+
+current_month = pd.Timestamp.now().month
+months = ["Todos"] + list(month_names.keys())
+years =["Todos"] + sorted(df["data_vencimento"].dt.year.unique())
 with col1:
-    ano = st.selectbox("Ano", ["Todos"] +
-                       sorted(df["data_vencimento"].dt.year.unique()))
+    ano = st.selectbox("Ano", years, index=years.index(pd.Timestamp.now().year) if pd.Timestamp.now().year in years else 0)
 
 with col2:
-    mes = st.selectbox("Mês", ["Todos"] + list(range(1, 13)))
+
+    mes = st.selectbox(
+        "Mês",
+        options=months,
+        format_func=lambda x: "Todos" if x == "Todos" else month_names[x],
+        index=months.index(current_month) if current_month in months else 0
+    )
 
 active_outcomes = df[df["active"].str.upper() != "FALSE"]
 
@@ -211,14 +234,17 @@ with st.expander("Tabela de contas", False):
     )
 
 open_outcomes = active_outcomes[active_outcomes["saldo"] > 0].sort_values(
-    "data_vencimento")
+    "data_vencimento"
+)
 
 id_to_label = {
     row["id"]: f'{utils.format_date_br(row["data_vencimento"])} | {row["descricao"]} ({utils.format_brl(row["saldo"])})'
     for _, row in open_outcomes.iterrows()
 }
 
-open_outcomes_filtered = filtered[filtered["status"].str.lower() != "pago"]
+open_outcomes_filtered = filtered[filtered["status"].str.lower() != "pago"].sort_values(
+    "data_vencimento"
+)
 selected_id = st.selectbox(
     "Conta",
     options=open_outcomes_filtered["id"].tolist(),
