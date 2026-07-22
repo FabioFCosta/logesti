@@ -127,12 +127,14 @@ st.write("")
 with st.expander("Consolidado por cliente", False):
     st.dataframe(consolidated_by_client, use_container_width=True)
 
-consolidated=pd.DataFrame()
-for _, row in outcomes[(outcomes["cliente_nome"].isna())].iterrows():
-    outcome_id=row["id"]
+consolidated = pd.DataFrame()
+enterprise_outcomes_for_summary = outcomes[
+    outcomes["cliente_nome"].apply(lambda x: pd.isna(x) or str(x).strip() == "")
+].copy()
+
+for _, row in enterprise_outcomes_for_summary.iterrows():
+    outcome_id = row["id"]
     payment = outcomes_payments[outcomes_payments["outcome_id"] == outcome_id]
-    if payment.empty:
-        continue
     consolidated = pd.concat([consolidated, pd.DataFrame({
         "descricao": [row["descricao"]],
         "valor": [row["valor"]],
@@ -211,6 +213,18 @@ outcomes_with_date = outcomes[outcomes['data_vencimento'].notna()].copy()
 incomes_with_date['mes_ano'] = incomes_with_date['data'].dt.to_period('M')
 outcomes_with_date['mes_ano'] = outcomes_with_date['data_vencimento'].dt.to_period('M')
 
+# Use payment dates for enterprise expenses when available
+enterprise_outcomes = outcomes_with_date[
+    outcomes_with_date['cliente_nome'].apply(lambda x: pd.isna(x) or str(x).strip() == '')
+].copy()
+if 'data_pagamento' in consolidated.columns:
+    enterprise_outcomes['payment_date'] = pd.to_datetime(consolidated['data_pagamento'], errors='coerce')
+else:
+    enterprise_outcomes['payment_date'] = pd.NaT
+enterprise_outcomes['mes_ano'] = pd.to_datetime(
+    enterprise_outcomes['payment_date'].fillna(enterprise_outcomes['data_vencimento'])
+).dt.to_period('M')
+
 # 1. Client Incomes and Outcomes by Month
 st.subheader("1️⃣ Receitas e Despesas dos Clientes por Mês")
 client_income_by_month = incomes_with_date[incomes_with_date['cliente_nome'].notna() & (incomes_with_date['cliente_nome'] != '')].groupby('mes_ano')['valor'].sum()
@@ -236,25 +250,30 @@ st.plotly_chart(fig_client_monthly, use_container_width=True)
 # 2. Caixa and Enterprise Outcomes by Month
 st.subheader("2️⃣ Despesas da Empresa (Caixa vs Demais) por Mês")
 
-# Merge outcomes with outcome_payments to capture all paid expenses
+# Keep enterprise expenses separately from customer-linked ones
 enterprise_outcomes = outcomes_with_date[
-    (outcomes_with_date['cliente_nome'].isna())
-    | (outcomes_with_date['cliente_nome'] == '')
+    outcomes_with_date['cliente_nome'].apply(lambda x: pd.isna(x) or str(x).strip() == '')
 ].copy()
 
-# Normalize text for matching
+# Normalize text for matching in multiple relevant columns
 enterprise_outcomes['quem_pagar_clean'] = (
     enterprise_outcomes['quem_pagar'].fillna('').astype(str).str.strip().str.upper()
 )
+enterprise_outcomes['descricao_clean'] = (
+    enterprise_outcomes['descricao'].fillna('').astype(str).str.strip().str.upper()
+)
+enterprise_outcomes['tipo_clean'] = (
+    enterprise_outcomes['tipo'].fillna('').astype(str).str.strip().str.upper()
+)
 
-# Group by normalized column
-caixa_outcome_by_month = enterprise_outcomes[
+caixa_mask = (
     enterprise_outcomes['quem_pagar_clean'].str.contains('CAIXA', na=False)
-].groupby('mes_ano')['valor'].sum()
+    | enterprise_outcomes['descricao_clean'].str.contains('CAIXA', na=False)
+    | enterprise_outcomes['tipo_clean'].str.contains('CAIXA', na=False)
+)
 
-other_outcome_by_month = enterprise_outcomes[
-    ~enterprise_outcomes['quem_pagar_clean'].str.contains('CAIXA', na=False)
-].groupby('mes_ano')['valor'].sum()
+caixa_outcome_by_month = enterprise_outcomes.loc[caixa_mask].groupby('mes_ano')['valor'].sum()
+other_outcome_by_month = enterprise_outcomes.loc[~caixa_mask].groupby('mes_ano')['valor'].sum()
 
 all_months_enterprise = caixa_outcome_by_month.index.union(
     other_outcome_by_month.index
