@@ -73,7 +73,10 @@ for _, row in orcamentos[orcamentos["active"] == True].iterrows():
 
     })], ignore_index=True)
 
-
+consolidated_by_client["profit_pct"] = consolidated_by_client.apply(
+    lambda r: (r["profit"] / r["incomes"] * 100) if r["incomes"] else None,
+    axis=1
+)
 
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -304,3 +307,26 @@ if not enterprise_outcomes.empty and 'tipo' in enterprise_outcomes.columns:
     st.plotly_chart(fig_outcome_enterprise_type, use_container_width=True)
 else:
     st.info("Dados de despesas da empresa não disponíveis")
+
+# 6. Bar chart - Profit % by Client
+st.subheader("6️⃣ % de Lucro por Cliente")
+profit_pct_df = consolidated_by_client[consolidated_by_client["profit_pct"].notna()].copy()
+profit_pct_df = profit_pct_df.sort_values("profit_pct", ascending=False)
+if not profit_pct_df.empty:
+    colors = ["green" if v >= 0 else "red" for v in profit_pct_df["profit_pct"]]
+    fig_profit_pct = go.Figure()
+    fig_profit_pct.add_trace(go.Bar(
+        x=profit_pct_df["cliente_nome"],
+        y=profit_pct_df["profit_pct"],
+        marker_color=colors,
+        hovertemplate="%{x}: %{y:.1f}%<extra></extra>"
+    ))
+    fig_profit_pct.update_layout(
+        title="% de Lucro por Cliente (Lucro / Receita)",
+        xaxis_title="Cliente",
+        yaxis_title="% Lucro",
+        height=400
+    )
+    st.plotly_chart(fig_profit_pct, use_container_width=True)
+else:
+    st.info("Sem clientes com receita lançada para calcular % de lucro")
