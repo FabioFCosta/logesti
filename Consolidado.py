@@ -52,7 +52,7 @@ for _, row in clientes.iterrows():
         "caixa":[profit]
     })], ignore_index=True)
 
-for _, row in orcamentos.iterrows():
+for _, row in orcamentos[orcamentos["active"] == True].iterrows():
     if row['nome'] == "":
         continue
     if row['nome'] not in incomes["cliente_nome"].unique() and row['nome'] not in outcomes["cliente_nome"].unique():

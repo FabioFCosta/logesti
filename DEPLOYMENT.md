@@ -39,6 +39,10 @@ Your repo structure should have:
    - Copy the `client_email` from the JSON key
    - Open your Sheet → Share → Add the email
 
+6. Add the service account JSON to Streamlit Secrets
+   - Open your app settings → Secrets
+   - Add a `google_service_account` table with the full JSON fields
+
 #### Option B: Using OAuth 2.0 (Current Method)
 1. Keep using your current `credentials.json`
 2. Generate a refresh token from `token.json`
@@ -49,6 +53,24 @@ Your repo structure should have:
 1. Go to [Streamlit Cloud Dashboard](https://share.streamlit.io)
 2. Click your app → **Settings** → **Secrets**
 3. Paste the credentials as TOML:
+
+```toml
+[google_service_account]
+type = "service_account"
+project_id = "your-project-id"
+private_key_id = "..."
+private_key = """-----BEGIN PRIVATE KEY-----
+...
+-----END PRIVATE KEY-----"""
+client_email = "your-service-account@your-project.iam.gserviceaccount.com"
+client_id = "..."
+auth_uri = "https://accounts.google.com/o/oauth2/auth"
+token_uri = "https://oauth2.googleapis.com/token"
+auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs"
+client_x509_cert_url = "..."
+```
+
+Or, if you want to use OAuth user credentials:
 
 ```toml
 [google_sheets_credentials]
