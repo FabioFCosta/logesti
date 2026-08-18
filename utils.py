@@ -130,6 +130,22 @@ def save_incomes(file_id, df):
         body=body
     ).execute()
 
+def reassign_quote_to_client(incomes_df, outcomes_df, quote_id, client_id):
+    incomes_df = incomes_df.copy()
+    outcomes_df = outcomes_df.copy()
+
+    if "quote_id" in incomes_df.columns:
+        incomes_mask = incomes_df["quote_id"] == quote_id
+        incomes_df.loc[incomes_mask, "client_id"] = client_id
+        incomes_df.loc[incomes_mask, "quote_id"] = ""
+
+    if "quote_id" in outcomes_df.columns:
+        outcomes_mask = outcomes_df["quote_id"] == quote_id
+        outcomes_df.loc[outcomes_mask, "client_id"] = client_id
+        outcomes_df.loc[outcomes_mask, "quote_id"] = ""
+
+    return incomes_df, outcomes_df
+
 def format_brl(value):
     return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 

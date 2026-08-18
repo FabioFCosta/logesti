@@ -128,11 +128,26 @@ with tab3:
         new_clientes = pd.concat(
             [clientes, clients_to_move], ignore_index=True)
 
+        incomes = utils.load_incomes(FILE_ID)
+        outcomes = utils.load_outcomes(FILE_ID)
+        for quote_id in selected_ids:
+            incomes, outcomes = utils.reassign_quote_to_client(
+                incomes, outcomes, quote_id=quote_id, client_id=quote_id)
+
+        if "data" in incomes.columns:
+            incomes["data"] = pd.to_datetime(
+                incomes["data"]).dt.strftime("%Y-%m-%d")
+        if "data_vencimento" in outcomes.columns:
+            outcomes["data_vencimento"] = pd.to_datetime(
+                outcomes["data_vencimento"]).dt.strftime("%Y-%m-%d")
+
         try:
             utils.save_sheet(FILE_ID, "CLIENTES_DB", new_clientes)
             orcamentos.loc[orcamentos["id"].isin(
                 selected_ids), "active"] = False
             utils.save_sheet(FILE_ID, "ORCAMENTOS_DB", orcamentos)
+            utils.save_incomes(FILE_ID, incomes)
+            utils.save_sheet(FILE_ID, "OUTCOMES_DB", outcomes)
 
             st.session_state.clientes = new_clientes
             st.session_state.orcamentos = orcamentos
