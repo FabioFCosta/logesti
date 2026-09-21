@@ -213,7 +213,6 @@ data_limite = st.date_input(
     value=(pd.Timestamp.today() + pd.DateOffset(months=1)).date()
 )
 
-hoje = pd.Timestamp.today().normalize()
 data_limite_ts = pd.Timestamp(data_limite)
 
 income_payments_grouped = income_payments.groupby("income_id")["valor_pago"].sum()
@@ -222,7 +221,6 @@ incomes_future["valor_pago"] = incomes_future["id"].map(income_payments_grouped)
 incomes_future["saldo"] = incomes_future["valor"] - incomes_future["valor_pago"]
 incomes_future = incomes_future[
     (incomes_future["saldo"] > 0) &
-    (incomes_future["data"] >= hoje) &
     (incomes_future["data"] <= data_limite_ts)
 ]
 recebimentos_futuros = incomes_future["saldo"].sum()
@@ -233,7 +231,6 @@ outcomes_future["valor_pago"] = outcomes_future["id"].map(outcomes_payments_grou
 outcomes_future["saldo"] = outcomes_future["valor"] - outcomes_future["valor_pago"]
 outcomes_future = outcomes_future[
     (outcomes_future["saldo"] > 0) &
-    (outcomes_future["data_vencimento"] >= hoje) &
     (outcomes_future["data_vencimento"] <= data_limite_ts)
 ]
 pagamentos_futuros = outcomes_future["saldo"].sum()
