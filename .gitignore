@@ -4,3 +4,5 @@ credentials.json
 token.json
 CLAUDE.md
 .claude/
+**.pyc
+*/__pycache__/

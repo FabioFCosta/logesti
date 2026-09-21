@@ -11,6 +11,7 @@ st.subheader("Visão geral das receitas, despesas e lucros por cliente")
 incomes = utils.load_incomes(utils.FILE_ID)
 outcomes=utils.load_outcomes(utils.FILE_ID)
 outcomes_payments = utils.load_outcome_payments(utils.FILE_ID)
+income_payments = utils.load_income_payments(utils.FILE_ID)
 clientes,orcamentos = utils.get_clientes_and_orcamentos()
 
 def get_client_name(income):
@@ -33,43 +34,61 @@ def get_client_name(income):
 incomes["cliente_nome"] = incomes.apply(get_client_name, axis=1)
 outcomes["cliente_nome"] = outcomes.apply(get_client_name, axis=1)
 
+# Registros ativos (soft-delete via coluna "active"). A coluna vem da Sheets
+# API como string ("TRUE"/"FALSE"), não bool — comparar com `!= False` nunca
+# filtra nada (mesmo padrão de pages/04_Contas_A_Pagar.py linha 187).
+def _filter_active(df):
+    if "active" not in df.columns:
+        return df
+    return df[df["active"].astype(str).str.upper() != "FALSE"]
+
+incomes_active = _filter_active(incomes).copy()
+outcomes_active = _filter_active(outcomes).copy()
+
 consolidated_by_client = pd.DataFrame()
 
 for _, row in clientes.iterrows():
-    income_sum = incomes[incomes["cliente_nome"] == row['nome']]["valor"].sum()
-    outcome_sum = outcomes[outcomes["cliente_nome"] == row['nome']]["valor"].sum()
     if row['nome'] == "":
         continue
-    if row['nome'] not in incomes["cliente_nome"].unique() and row['nome'] not in outcomes["cliente_nome"].unique():
+    if row['nome'] not in incomes_active["cliente_nome"].unique() and row['nome'] not in outcomes_active["cliente_nome"].unique():
         continue
-  
+
+    client_income_ids = incomes_active[incomes_active["cliente_nome"] == row['nome']]["id"]
+    income_sum = income_payments[income_payments["income_id"].isin(client_income_ids)]["valor_pago"].sum()
+
+    client_outcomes = outcomes_active[outcomes_active["cliente_nome"] == row['nome']]
+    client_outcome_ids = client_outcomes[client_outcomes["tipo"] != "Pro Labore"]["id"]
+    outcome_sum = outcomes_payments[outcomes_payments["outcome_id"].isin(client_outcome_ids)]["valor_pago"].sum()
+
     profit = income_sum - outcome_sum
     consolidated_by_client = pd.concat([consolidated_by_client, pd.DataFrame({
         "cliente_nome": [row['nome']],
         "incomes": [income_sum],
         "outcomes": [outcome_sum],
         "profit": [profit],
-        "caixa":[profit]
     })], ignore_index=True)
 
 for _, row in orcamentos[orcamentos["active"] == True].iterrows():
     if row['nome'] == "":
         continue
-    if row['nome'] not in incomes["cliente_nome"].unique() and row['nome'] not in outcomes["cliente_nome"].unique():
+    if row['nome'] not in incomes_active["cliente_nome"].unique() and row['nome'] not in outcomes_active["cliente_nome"].unique():
         continue
     if row['nome'] in consolidated_by_client["cliente_nome"].values:
         continue
-    
-    income_sum = incomes[incomes["cliente_nome"] == row['nome']]["valor"].sum()
-    outcome_sum = outcomes[outcomes["cliente_nome"] == row['nome']]["valor"].sum()
-  
+
+    client_income_ids = incomes_active[incomes_active["cliente_nome"] == row['nome']]["id"]
+    income_sum = income_payments[income_payments["income_id"].isin(client_income_ids)]["valor_pago"].sum()
+
+    client_outcomes = outcomes_active[outcomes_active["cliente_nome"] == row['nome']]
+    client_outcome_ids = client_outcomes[client_outcomes["tipo"] != "Pro Labore"]["id"]
+    outcome_sum = outcomes_payments[outcomes_payments["outcome_id"].isin(client_outcome_ids)]["valor_pago"].sum()
+
     profit = income_sum - outcome_sum
     consolidated_by_client = pd.concat([consolidated_by_client, pd.DataFrame({
         "cliente_nome": [row['nome']],
         "incomes": [income_sum],
         "outcomes": [outcome_sum],
         "profit": [profit],
-        "caixa":[profit]
 
     })], ignore_index=True)
 
@@ -112,27 +131,14 @@ with col3:
         unsafe_allow_html=True,
     )
 
-st.write("")  # spacing
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.markdown(
-        f"""
-        <div style="background-color: #141414; padding: 15px; border-radius: 8px; border-left: 5px solid #1565c0;">
-            <p style="margin: 0; font-size: 14px; color: #555;">Caixa Total</p>
-            <h2 style="margin: 0; color: #1565c0; font-size: 28px; font-weight: bold;">R$ {consolidated_by_client['caixa'].sum():,.2f}</h2>
-        </div>
-    """,
-        unsafe_allow_html=True,
-    )
-st.write("")  
+st.write("")
 
-    
 with st.expander("Consolidado por cliente", False):
     st.dataframe(consolidated_by_client, use_container_width=True)
 
 consolidated = pd.DataFrame()
-enterprise_outcomes_for_summary = outcomes[
-    outcomes["cliente_nome"].apply(lambda x: pd.isna(x) or str(x).strip() == "")
+enterprise_outcomes_for_summary = outcomes_active[
+    outcomes_active["cliente_nome"].apply(lambda x: pd.isna(x) or str(x).strip() == "")
 ].copy()
 
 for _, row in enterprise_outcomes_for_summary.iterrows():
@@ -146,11 +152,17 @@ for _, row in enterprise_outcomes_for_summary.iterrows():
         "quem_pagar": [row["quem_pagar"]],
         "data_pagamento": [payment["data_pagamento"].iloc[0] if not payment.empty else None],
     })], ignore_index=True)
-    
 
-caixa_total = consolidated_by_client['caixa'].sum()
-pro_labore_total = outcomes[outcomes["tipo"]=="Pro Labore"]["valor"].sum()
-despesa_total = consolidated['valor'].sum()
+
+enterprise_outcomes_no_pl_ids = enterprise_outcomes_for_summary[
+    enterprise_outcomes_for_summary["tipo"] != "Pro Labore"
+]["id"]
+despesa_total = outcomes_payments[outcomes_payments["outcome_id"].isin(enterprise_outcomes_no_pl_ids)]["valor_pago"].sum()
+
+pro_labore_ids = outcomes_active[outcomes_active["tipo"] == "Pro Labore"]["id"]
+pro_labore_total = outcomes_payments[outcomes_payments["outcome_id"].isin(pro_labore_ids)]["valor_pago"].sum()
+
+caixa_total = consolidated_by_client['profit'].sum() - despesa_total - pro_labore_total
 
 st.subheader("Visão das despesas da empresa")
 col1, col2, col3 = st.columns(3)
@@ -187,22 +199,82 @@ with col3:
         unsafe_allow_html=True,
     )
 
-st.write("")  
+st.write("")
+
+with st.expander("Despesas da empresa", False):
+    st.dataframe(consolidated, use_container_width=True)
+
+# Seção: Receitas e Despesas Futuras
+st.divider()
+st.subheader("Receitas e Despesas Futuras")
+
+data_limite = st.date_input(
+    "Data limite",
+    value=(pd.Timestamp.today() + pd.DateOffset(months=1)).date()
+)
+
+hoje = pd.Timestamp.today().normalize()
+data_limite_ts = pd.Timestamp(data_limite)
+
+income_payments_grouped = income_payments.groupby("income_id")["valor_pago"].sum()
+incomes_future = incomes_active.copy()
+incomes_future["valor_pago"] = incomes_future["id"].map(income_payments_grouped).fillna(0)
+incomes_future["saldo"] = incomes_future["valor"] - incomes_future["valor_pago"]
+incomes_future = incomes_future[
+    (incomes_future["saldo"] > 0) &
+    (incomes_future["data"] >= hoje) &
+    (incomes_future["data"] <= data_limite_ts)
+]
+recebimentos_futuros = incomes_future["saldo"].sum()
+
+outcomes_payments_grouped = outcomes_payments.groupby("outcome_id")["valor_pago"].sum()
+outcomes_future = outcomes_active.copy()
+outcomes_future["valor_pago"] = outcomes_future["id"].map(outcomes_payments_grouped).fillna(0)
+outcomes_future["saldo"] = outcomes_future["valor"] - outcomes_future["valor_pago"]
+outcomes_future = outcomes_future[
+    (outcomes_future["saldo"] > 0) &
+    (outcomes_future["data_vencimento"] >= hoje) &
+    (outcomes_future["data_vencimento"] <= data_limite_ts)
+]
+pagamentos_futuros = outcomes_future["saldo"].sum()
+
+caixa_futuro = recebimentos_futuros - pagamentos_futuros
+
 col1, col2, col3 = st.columns(3)
 with col1:
     st.markdown(
         f"""
-        <div style="background-color: #141414; padding: 15px; border-radius: 8px; border-left: 5px solid #1565c0;">
-            <p style="margin: 0; font-size: 14px; color: #555;">Caixa Atual</p>
-            <h2 style="margin: 0; color: #1565c0; font-size: 28px; font-weight: bold;">R$ {caixa_total-despesa_total:,.2f}</h2>
+        <div style="background-color: #141414; padding: 15px; border-radius: 8px; border-left: 5px solid #2e7d32;">
+            <p style="margin: 0; font-size: 14px; color: #555;">Recebimentos Futuros</p>
+            <h2 style="margin: 0; color: #2e7d32; font-size: 28px; font-weight: bold;">R$ {recebimentos_futuros:,.2f}</h2>
         </div>
     """,
         unsafe_allow_html=True,
     )
-st.write("")  
 
-with st.expander("Despesas da empresa", False):
-    st.dataframe(consolidated, use_container_width=True)
+with col2:
+    st.markdown(
+        f"""
+        <div style="background-color: #141414; padding: 15px; border-radius: 8px; border-left: 5px solid #c62828;">
+            <p style="margin: 0; font-size: 14px; color: #555;">Pagamentos Futuros</p>
+            <h2 style="margin: 0; color: #c62828; font-size: 28px; font-weight: bold;">R$ {pagamentos_futuros:,.2f}</h2>
+        </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+with col3:
+    st.markdown(
+        f"""
+        <div style="background-color: #141414; padding: 15px; border-radius: 8px; border-left: 5px solid #1565c0;">
+            <p style="margin: 0; font-size: 14px; color: #555;">Caixa Futuro</p>
+            <h2 style="margin: 0; color: #1565c0; font-size: 28px; font-weight: bold;">R$ {caixa_futuro:,.2f}</h2>
+        </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+st.write("")
 
 # Charts Section
 st.divider()
