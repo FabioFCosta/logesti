@@ -87,7 +87,7 @@ def build_financial_view(incomes, payments):
     df["saldo_grupo"] = df["total_grupo"] - df["pago_grupo"]
 
     def get_status(row):
-        if row["saldo"] == 0:
+        if row["saldo"] <= 0:
             return "Recebido"
         elif row["valor_pago"] > 0:
             return "Recebido Parcialmente"
@@ -110,25 +110,6 @@ def save_payment(file_id, payment_df):
     ).dt.strftime("%Y-%m-%d")
 
     utils.save_sheet(file_id, "INCOMES_PAYMENTS_DB", payment_df)
-
-
-# ==============================
-# ADD PAYMENT
-# ==============================
-def add_payment(file_id, payments_df, income_id, valor, data_pagamento):
-    new_payment = {
-        "id": str(uuid.uuid4()),
-        "income_id": income_id,
-        "data_pagamento": data_pagamento,
-        "valor_pago": valor
-    }
-
-    new_df = pd.concat(
-        [payments_df, pd.DataFrame([new_payment])],
-        ignore_index=True
-    )
-
-    save_payment(file_id, new_df)
 
 
 def empty_income_rows(n=1):
@@ -365,7 +346,7 @@ with tab1:
                 tipo = st.selectbox(
                     f"Tipo {i+1}",
                     options=["Reembolso", "Acompanhamento", "Projeto",
-                             "Administração", "Orçamento", "Perícia", "Outros"],
+                             "Administração", "Orçamento", "Perícia", "Juros", "Outros"],
                     key=f"tipo_{i}"
                 )
                 incomes_data.append({
@@ -405,7 +386,7 @@ with tab1:
         total_valor = st.number_input("Valor total", min_value=0.0)
         num_parcelas = st.number_input("Qtd parcelas", 2, 24, 2)
         tipo = st.selectbox("Tipo de receita", [
-                            "Reembolso", "Acompanhamento", "Projeto", "Administração", "Orçamento", "Perícia", "Outros"])
+                            "Reembolso", "Acompanhamento", "Projeto", "Administração", "Orçamento", "Perícia", "Juros", "Pedágio", "Outros"])
         client_id = st.selectbox(
             "Cliente",
             options=[""] + list(clientes_map.keys()),
@@ -568,9 +549,52 @@ with tab2:
 
             if submitted:
                 try:
-                    add_payment(FILE_ID, payments, selected_id,
-                                valor_pago, data_pagamento)
-                    st.success("Recebimento registrado!")
+                    saldo_atual = float(income["saldo"])
+                    valor_conta = min(valor_pago, saldo_atual)
+                    excedente = max(valor_pago - saldo_atual, 0)
+
+                    new_payments = [{
+                        "id": str(uuid.uuid4()),
+                        "income_id": selected_id,
+                        "data_pagamento": data_pagamento,
+                        "valor_pago": valor_conta
+                    }]
+
+                    if excedente > 0:
+                        juros_id = str(uuid.uuid4())
+                        juros_income = {
+                            "id": juros_id,
+                            "descricao": f"Juros - {income['descricao']}",
+                            "valor": excedente,
+                            "client_id": income.get("client_id", ""),
+                            "quote_id": income.get("quote_id", ""),
+                            "data": data_pagamento,
+                            "tipo": "Juros",
+                            "active": True
+                        }
+
+                        new_incomes_df = pd.concat(
+                            [incomes, pd.DataFrame([juros_income])], ignore_index=True)
+                        new_incomes_df["data"] = pd.to_datetime(
+                            new_incomes_df["data"]).dt.strftime("%Y-%m-%d")
+                        utils.save_sheet(FILE_ID, "INCOMES_DB", new_incomes_df)
+
+                        new_payments.append({
+                            "id": str(uuid.uuid4()),
+                            "income_id": juros_id,
+                            "data_pagamento": data_pagamento,
+                            "valor_pago": excedente
+                        })
+
+                    new_payments_df = pd.concat(
+                        [payments, pd.DataFrame(new_payments)], ignore_index=True)
+                    save_payment(FILE_ID, new_payments_df)
+
+                    if excedente > 0:
+                        st.success(
+                            f"Recebimento registrado! Excedente de {utils.format_brl(excedente)} lançado como Juros.")
+                    else:
+                        st.success("Recebimento registrado!")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Erro: {e}")

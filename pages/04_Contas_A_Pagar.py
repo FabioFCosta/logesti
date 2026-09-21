@@ -55,7 +55,7 @@ def build_financial_view(outcomes, payments):
 
     df["status"] = "A Pagar"
 
-    df.loc[df["saldo"] == 0, "status"] = "Pago"
+    df.loc[df["saldo"] <= 0, "status"] = "Pago"
 
     df.loc[(df["saldo"] > 0) & (df["valor_pago"] > 0),
            "status"] = "Pago Parcial"
@@ -68,25 +68,6 @@ def build_financial_view(outcomes, payments):
     ] = "Vencido"
 
     return df
-
-
-def add_payment(file_id, payments_df, outcome_id, valor, data_pagamento):
-    new_payment = {
-        "id": str(uuid.uuid4()),
-        "outcome_id": outcome_id,
-        "data_pagamento": data_pagamento,
-        "valor_pago": valor
-    }
-
-    new_df = pd.concat(
-        [payments_df, pd.DataFrame([new_payment])],
-        ignore_index=True
-    )
-
-    new_df["data_pagamento"] = pd.to_datetime(
-        new_df["data_pagamento"]).dt.strftime("%Y-%m-%d")
-
-    utils.save_sheet(file_id, "PAYMENTS_OUT_DB", new_df)
 
 
 def create_recurrent_outcomes(base_outcome, start_date, end_date):
@@ -138,7 +119,7 @@ outcomes = ensure_outcome_ids(FILE_ID, outcomes)
 outcomes_types = [
     "Visita", "Mão de obra", "Pro Labore",
     "Adquirir Ativo", "Fornecedor", "Impostos/Taxas",
-    "Utilização Carro", "Utilização Moto", "Gasolina", "Reembolso", "Alimentação", "Contabilidade", "Entrega Obras", "Frete", "Outros"
+    "Utilização Carro", "Utilização Moto", "Gasolina", "Reembolso", "Alimentação", "Contabilidade", "Entrega Obras", "Frete", "Juros", "Pedágio", "Outros"
 ]
 
 df = build_financial_view(outcomes, payments)
@@ -428,9 +409,65 @@ with tab2:
             submitted = st.form_submit_button("Salvar")
 
             if submitted:
-                add_payment(FILE_ID, payments, selected_id, valor, data)
-                st.success("Pagamento registrado!")
-                st.rerun()
+                try:
+                    saldo_atual = float(outcome["saldo"])
+                    valor_conta = min(valor, saldo_atual)
+                    excedente = max(valor - saldo_atual, 0)
+
+                    new_payments = [{
+                        "id": str(uuid.uuid4()),
+                        "outcome_id": selected_id,
+                        "data_pagamento": data,
+                        "valor_pago": valor_conta
+                    }]
+
+                    if excedente > 0:
+                        juros_id = str(uuid.uuid4())
+                        juros_outcome = {
+                            "id": juros_id,
+                            "descricao": f"Juros - {outcome['descricao']}",
+                            "valor": excedente,
+                            "data_vencimento": to_iso_date(data),
+                            "tipo": "Juros",
+                            "quem_pagar": outcome.get("quem_pagar", ""),
+                            "client_id": outcome.get("client_id", ""),
+                            "quote_id": outcome.get("quote_id", ""),
+                            "km": "",
+                            "km_rate": "",
+                            "is_recurrent": False,
+                            "recurrence_end_date": "",
+                            "active": True
+                        }
+
+                        new_outcomes_df = pd.concat(
+                            [outcomes, pd.DataFrame([juros_outcome])], ignore_index=True)
+                        new_outcomes_df = normalize_dates_for_sheets(
+                            new_outcomes_df)
+                        utils.save_sheet(
+                            FILE_ID, "OUTCOMES_DB", new_outcomes_df)
+
+                        new_payments.append({
+                            "id": str(uuid.uuid4()),
+                            "outcome_id": juros_id,
+                            "data_pagamento": data,
+                            "valor_pago": excedente
+                        })
+
+                    new_payments_df = pd.concat(
+                        [payments, pd.DataFrame(new_payments)], ignore_index=True)
+                    new_payments_df["data_pagamento"] = pd.to_datetime(
+                        new_payments_df["data_pagamento"]).dt.strftime("%Y-%m-%d")
+                    utils.save_sheet(
+                        FILE_ID, "PAYMENTS_OUT_DB", new_payments_df)
+
+                    if excedente > 0:
+                        st.success(
+                            f"Pagamento registrado! Excedente de {utils.format_brl(excedente)} lançado como Juros.")
+                    else:
+                        st.success("Pagamento registrado!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro ao registrar pagamento: {e}")
     else:
         st.info("Selecione uma conta a pagar para registrar pagamento")
 
