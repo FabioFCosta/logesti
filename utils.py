@@ -246,11 +246,110 @@ def load_km_rates(file_id):
 
 def save_km_rates(file_id, rates):
     ensure_sheet_exists(file_id, "GENERAL_SETTINGS_DB")
-    settings_df = pd.DataFrame([
-        {"key": "valor_km_carro", "value": rates.get("valor_km_carro", 0.0)},
-        {"key": "valor_km_moto", "value": rates.get("valor_km_moto", 0.0)}
-    ])
+    settings_df = load_general_settings(file_id)
+
+    for key in ("valor_km_carro", "valor_km_moto"):
+        value = rates.get(key, 0.0)
+        mask = settings_df["key"] == key
+        if mask.any():
+            settings_df.loc[mask, "value"] = value
+            settings_df.loc[mask, "type"] = "km"
+            settings_df.loc[mask, "active"] = True
+        else:
+            new_row = {"key": key, "value": value, "type": "km", "active": True}
+            settings_df = pd.concat(
+                [settings_df, pd.DataFrame([new_row])], ignore_index=True)
+
     save_sheet(file_id, "GENERAL_SETTINGS_DB", settings_df)
+
+
+def load_general_settings(file_id):
+    service = get_sheets_service()
+    try:
+        result = service.spreadsheets().values().get(
+            spreadsheetId=file_id,
+            range="GENERAL_SETTINGS_DB!A1:D"
+        ).execute()
+    except Exception:
+        return pd.DataFrame(columns=["key", "value", "type", "active"])
+
+    values = result.get("values", [])
+    if not values or len(values) < 2:
+        return pd.DataFrame(columns=["key", "value", "type", "active"])
+
+    headers = [h.strip().lower() for h in values[0]]
+    rows = values[1:]
+    # Pad short rows so pandas doesn't choke on ragged data from the sheet
+    rows = [row + [""] * (len(headers) - len(row)) for row in rows]
+    settings = pd.DataFrame(rows, columns=headers)
+
+    if "key" not in settings.columns:
+        settings["key"] = ""
+    if "value" not in settings.columns:
+        settings["value"] = ""
+    if "type" not in settings.columns:
+        settings["type"] = ""
+    if "active" not in settings.columns:
+        settings["active"] = True
+    else:
+        settings["active"] = settings["active"].apply(
+            lambda v: True if v == "" or pd.isna(v) else str(v).strip().lower() in ("true", "1", "verdadeiro")
+        )
+
+    return settings
+
+
+def load_type_options(file_id, category):
+    seeds = {
+        "income_options": [
+            "Reembolso", "Acompanhamento", "Projeto", "Administração",
+            "Orçamento", "Perícia", "Juros", "Pedágio", "Outros"
+        ],
+        "outcomes_options": [
+            "Visita", "Mão de obra", "Pro Labore", "Adquirir Ativo",
+            "Fornecedor", "Impostos/Taxas", "Gasolina", "Reembolso",
+            "Alimentação", "Contabilidade", "Entrega Obras", "Frete",
+            "Juros", "Pedágio", "Outros"
+        ],
+    }
+
+    settings = load_general_settings(file_id)
+    category_rows = settings[settings["type"] == category]
+
+    if category_rows.empty:
+        ensure_sheet_exists(file_id, "GENERAL_SETTINGS_DB")
+        seed_values = seeds.get(category, [])
+        new_rows = pd.DataFrame([
+            {"key": nome, "value": "", "type": category, "active": True}
+            for nome in seed_values
+        ])
+        settings = pd.concat([settings, new_rows], ignore_index=True)
+        save_sheet(file_id, "GENERAL_SETTINGS_DB", settings)
+        return seed_values
+
+    active_rows = category_rows[category_rows["active"] == True]
+    return active_rows["key"].tolist()
+
+
+def save_type_option(file_id, category, nome):
+    ensure_sheet_exists(file_id, "GENERAL_SETTINGS_DB")
+    settings = load_general_settings(file_id)
+    mask = (settings["key"] == nome) & (settings["type"] == category)
+    if mask.any():
+        # Option already exists (likely deactivated) — reactivate instead of duplicating the row
+        settings.loc[mask, "active"] = True
+    else:
+        new_row = {"key": nome, "value": "", "type": category, "active": True}
+        settings = pd.concat(
+            [settings, pd.DataFrame([new_row])], ignore_index=True)
+    save_sheet(file_id, "GENERAL_SETTINGS_DB", settings)
+
+
+def set_type_option_active(file_id, category, nome, active):
+    settings = load_general_settings(file_id)
+    mask = (settings["key"] == nome) & (settings["type"] == category)
+    settings.loc[mask, "active"] = active
+    save_sheet(file_id, "GENERAL_SETTINGS_DB", settings)
 
 
 def normalize_df(df):

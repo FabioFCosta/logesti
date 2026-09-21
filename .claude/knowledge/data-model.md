@@ -85,10 +85,12 @@ Formato chave/valor, não tabular:
 
 | coluna | notas |
 |---|---|
-| `key` | `valor_km_carro` ou `valor_km_moto` |
-| `value` | float, parseado com vírgula BR |
+| `key` | nome da tarifa (`valor_km_carro`, `valor_km_moto`) ou nome da opção de tipo |
+| `value` | float, parseado com vírgula BR — só usado por `type == "km"`, vazio pras opções de tipo |
+| `type` | `"km"` (tarifas por KM, gerenciadas só pela aba "Valores por KM"), `"income_options"` (opções do dropdown de tipo de receita em `pages/03`) ou `"outcomes_options"` (opções do dropdown de tipo de despesa em `pages/04`, exceto os reservados "Utilização Carro"/"Utilização Moto" que ficam hardcoded fora dessa aba) |
+| `active` | bool, soft-delete das opções de tipo. Ausente em linhas antigas de `type == "km"` — tratado como `True` no load |
 
-Editado em `pages/05_General_Settings.py`, lido por `utils.load_km_rates`. Mudar a taxa **não** recalcula despesas KM já lançadas (elas guardam `km_rate` próprio no momento da criação).
+Editado em `pages/05_General_Settings.py` (uma aba por categoria: KM / Tipos de Receita / Tipos de Despesa). Lido por `utils.load_km_rates` (só linhas `type == "km"`) e `utils.load_type_options` (só linhas `type == categoria`, com seed automático na primeira execução se a categoria ainda não tiver nenhuma linha). Toda escrita (`save_km_rates`, `save_type_option`, `set_type_option_active`) faz load-modify-save da aba **inteira**, pra nunca sobrescrever as linhas das outras categorias. Mudar a taxa de KM **não** recalcula despesas já lançadas (elas guardam `km_rate` próprio no momento da criação).
 
 ## Relação entre abas
 

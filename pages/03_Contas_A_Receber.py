@@ -160,6 +160,7 @@ st.title("💰 Contas a Receber")
 # Load data
 incomes = utils.load_incomes(FILE_ID)
 payments = utils.load_income_payments(FILE_ID)
+income_types = utils.load_type_options(FILE_ID, "income_options")
 
 # Ensure IDs exist
 incomes = ensure_income_ids(FILE_ID, incomes)
@@ -345,8 +346,7 @@ with tab1:
                 data = st.date_input(f"Data {i+1}", key=f"date_{i}")
                 tipo = st.selectbox(
                     f"Tipo {i+1}",
-                    options=["Reembolso", "Acompanhamento", "Projeto",
-                             "Administração", "Orçamento", "Perícia", "Juros", "Outros"],
+                    options=income_types,
                     key=f"tipo_{i}"
                 )
                 incomes_data.append({
@@ -385,8 +385,7 @@ with tab1:
             "Descrição", placeholder="Digite uma descrição...")
         total_valor = st.number_input("Valor total", min_value=0.0)
         num_parcelas = st.number_input("Qtd parcelas", 2, 24, 2)
-        tipo = st.selectbox("Tipo de receita", [
-                            "Reembolso", "Acompanhamento", "Projeto", "Administração", "Orçamento", "Perícia", "Juros", "Pedágio", "Outros"])
+        tipo = st.selectbox("Tipo de receita", income_types)
         client_id = st.selectbox(
             "Cliente",
             options=[""] + list(clientes_map.keys()),

@@ -116,11 +116,8 @@ payments = utils.load_outcome_payments(FILE_ID)
 
 outcomes = ensure_outcome_ids(FILE_ID, outcomes)
 
-outcomes_types = [
-    "Visita", "Mão de obra", "Pro Labore",
-    "Adquirir Ativo", "Fornecedor", "Impostos/Taxas",
-    "Utilização Carro", "Utilização Moto", "Gasolina", "Reembolso", "Alimentação", "Contabilidade", "Entrega Obras", "Frete", "Juros", "Pedágio", "Outros"
-]
+RESERVED_OUTCOME_TYPES = ["Utilização Carro", "Utilização Moto"]
+outcomes_types = RESERVED_OUTCOME_TYPES + utils.load_type_options(FILE_ID, "outcomes_options")
 
 df = build_financial_view(outcomes, payments)
 
@@ -352,8 +349,8 @@ with tab1:
                 "quem_pagar": quem_pagar,
                 "client_id": cliente_id,
                 "quote_id": quote_id,
-                "km": km if tipo in ["Utilização Carro", "Utilização Moto"] else "",
-                "km_rate": km_rate if tipo in ["Utilização Carro", "Utilização Moto"] else "",
+                "km": km if tipo in RESERVED_OUTCOME_TYPES else "",
+                "km_rate": km_rate if tipo in RESERVED_OUTCOME_TYPES else "",
                 "is_recurrent": is_recurrent,
                 "recurrence_end_date": to_iso_date(recurrence_end_date) if is_recurrent else "",
                 "active": True
@@ -486,10 +483,11 @@ with tab3:
         # Inputs OUTSIDE the form for real-time updates
         descricao = st.text_input("Descrição", outcome["descricao"])
 
+        tipo_options = outcomes_types if outcome["tipo"] in outcomes_types else outcomes_types + [outcome["tipo"]]
         tipo = st.selectbox(
             "Tipo",
-            outcomes_types,
-            index=outcomes_types.index(outcome["tipo"]),
+            tipo_options,
+            index=tipo_options.index(outcome["tipo"]),
             key="edit_outcome_tipo"
         )
 
