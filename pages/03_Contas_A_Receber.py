@@ -354,7 +354,8 @@ with tab1:
                     "valor": valor,
                     "client_id": client_id,
                     "data": data,
-                    "tipo": tipo
+                    "tipo": tipo,
+                    "active": "TRUE"
                 })
 
             submitted = st.form_submit_button("💾 Salvar Receitas")

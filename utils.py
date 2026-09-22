@@ -167,7 +167,12 @@ def save_sheet(file_id, sheet_name, df):
         clean_df = clean_df.fillna("")
 
         if "active" in clean_df.columns:
-            clean_df["active"] = clean_df["active"].astype(bool)
+            clean_df["active"] = clean_df["active"].apply(
+                lambda v: True if v == "" or pd.isna(v) else (
+                    v if isinstance(v, bool)
+                    else str(v).strip().lower() in ("true", "1", "verdadeiro")
+                )
+            )
 
         return [clean_df.columns.tolist()] + clean_df.values.tolist()
 
