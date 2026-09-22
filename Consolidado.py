@@ -324,20 +324,52 @@ st.subheader("1️⃣ Receitas e Despesas Gerais por Mês")
 client_income_by_month = incomes_with_date[incomes_with_date['cliente_nome'].notna() & (incomes_with_date['cliente_nome'] != '')].groupby('mes_ano')['valor'].sum()
 outcome_by_month = outcomes_with_date.groupby('mes_ano')['valor'].sum()
 
+# Caixa acumulado por mês de pagamento (mesma base rigorosa de caixa_futuro:
+# pagamentos reais de registros ativos, não os valores brutos por vencimento das barras).
+# Nota: caixa_total soma apenas receitas atreladas a um cliente (consolidated_by_client),
+# então este acumulado pode não bater com caixa_total quando existem receitas sem
+# client_id/quote_id (receita da empresa) — ele segue a base mais ampla usada em caixa_futuro.
+income_payments_active = income_payments[
+    income_payments['income_id'].isin(incomes_active['id']) &
+    income_payments['data_pagamento'].notna()
+].copy()
+income_payments_active['mes_ano'] = income_payments_active['data_pagamento'].dt.to_period('M')
+income_payments_by_month = income_payments_active.groupby('mes_ano')['valor_pago'].sum()
+
+outcomes_payments_active = outcomes_payments[
+    outcomes_payments['outcome_id'].isin(outcomes_active['id']) &
+    outcomes_payments['data_pagamento'].notna()
+].copy()
+outcomes_payments_active['mes_ano'] = outcomes_payments_active['data_pagamento'].dt.to_period('M')
+outcomes_payments_by_month = outcomes_payments_active.groupby('mes_ano')['valor_pago'].sum()
+
+caixa_index = sorted(income_payments_by_month.index.union(outcomes_payments_by_month.index))
+income_payments_by_month = income_payments_by_month.reindex(caixa_index, fill_value=0)
+outcomes_payments_by_month = outcomes_payments_by_month.reindex(caixa_index, fill_value=0)
+caixa_acumulado_by_month = (income_payments_by_month - outcomes_payments_by_month).cumsum()
+
 # Ensure both series have the same index
-all_months = client_income_by_month.index.union(outcome_by_month.index)
+all_months = client_income_by_month.index.union(outcome_by_month.index).union(caixa_index)
 client_income_by_month = client_income_by_month.reindex(all_months, fill_value=0)
 outcome_by_month = outcome_by_month.reindex(all_months, fill_value=0)
+
+# Alinha o caixa acumulado ao eixo X das barras (mês de vencimento) carregando
+# o último saldo conhecido pros meses sem pagamento novo (ffill) e 0 antes do
+# primeiro pagamento existir (fillna). caixa_index já é subconjunto de all_months
+# (union feita acima), então reindexar direto por all_months é suficiente.
+caixa_acumulado_by_month = caixa_acumulado_by_month.reindex(all_months).ffill().fillna(0)
 
 df_client_monthly = pd.DataFrame({
     'Mês': [str(m) for m in all_months],
     'Receitas': client_income_by_month.values,
-    'Despesas': outcome_by_month.values
+    'Despesas': outcome_by_month.values,
+    'Caixa': caixa_acumulado_by_month.values
 })
 
 fig_client_monthly = go.Figure()
 fig_client_monthly.add_trace(go.Bar(x=df_client_monthly['Mês'], y=df_client_monthly['Receitas'], name='Receitas', marker_color='green'))
 fig_client_monthly.add_trace(go.Bar(x=df_client_monthly['Mês'], y=df_client_monthly['Despesas'], name='Despesas', marker_color='red'))
+fig_client_monthly.add_trace(go.Scatter(x=df_client_monthly['Mês'], y=df_client_monthly['Caixa'], name='Caixa', mode='lines+markers', line=dict(color='yellow', width=3)))
 fig_client_monthly.update_layout(barmode='group', title='Receitas e Despesas Gerais por Mês', xaxis_title='Mês', yaxis_title='Valor (R$)', height=400, hovermode='x unified')
 st.plotly_chart(fig_client_monthly, use_container_width=True)
 
