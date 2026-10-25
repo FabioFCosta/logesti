@@ -444,6 +444,8 @@ def load_outcome_payments(file_id):
 
     df = pd.DataFrame(normalized_rows, columns=headers)
     df.columns = [c.strip().lower() for c in df.columns]
+    # Cabeçalhos duplicados na planilha (ex.: células vazias) quebram pd.concat
+    df = df.loc[:, ~df.columns.duplicated()]
 
     df["valor_pago"] = parse_currency(df["valor_pago"])
 
@@ -481,6 +483,8 @@ def load_income_payments(file_id):
 
     df = pd.DataFrame(normalized_rows, columns=headers)
     df.columns = [c.strip().lower() for c in df.columns]
+    # Cabeçalhos duplicados na planilha (ex.: células vazias) quebram pd.concat
+    df = df.loc[:, ~df.columns.duplicated()]
 
     df["valor_pago"] = parse_currency(df["valor_pago"])
 
@@ -518,6 +522,8 @@ def load_incomes(file_id):
 
     df = pd.DataFrame(normalized_rows, columns=headers)
     df.columns = [c.strip().lower() for c in df.columns]
+    # Cabeçalhos duplicados na planilha (ex.: células vazias) quebram pd.concat
+    df = df.loc[:, ~df.columns.duplicated()]
 
     df["valor"] = parse_currency(df["valor"])
 
@@ -558,6 +564,8 @@ def load_outcomes(file_id):
 
     df = pd.DataFrame(normalized_rows, columns=headers)
     df.columns = [c.strip().lower() for c in df.columns]
+    # Cabeçalhos duplicados na planilha (ex.: células vazias) quebram pd.concat
+    df = df.loc[:, ~df.columns.duplicated()]
 
     df["valor"] = parse_currency(df["valor"])
     df["km"] = parse_currency(df["km"])
